@@ -13,6 +13,7 @@
 #include "KeyMap.hpp"
 #include "InputEngine.hpp"
 #include "../../shared/SkinSpec.hpp"
+#include "../../shared/UiLanguage.hpp"
 
 enum class CatCoatTheme : int {
     ClassicBlack = 0,
@@ -53,7 +54,7 @@ struct CatSettings {
     bool whiteOutline = true;
     bool enableAnger = true;
     bool enableDragAnimation = true;
-    bool isEnglish = false;
+    UiLanguage language = UiLanguage::Chinese;
     bool isEditMode = false; // runtime-only interactive resize & rotate box
     bool petInteraction = true;
     bool fullClickThrough = false;
@@ -109,7 +110,12 @@ struct CatSettings {
                 else if (k == "whiteOutline") whiteOutline = (std::stoi(v) != 0);
                 else if (k == "enableAnger") enableAnger = (std::stoi(v) != 0);
                 else if (k == "enableDragAnimation") enableDragAnimation = (std::stoi(v) != 0);
-                else if (k == "isEnglish") isEnglish = (std::stoi(v) != 0);
+                else if (k == "language") {
+                    if (v == "zh") language = UiLanguage::Chinese;
+                    else if (v == "en") language = UiLanguage::English;
+                    else if (v == "fr") language = UiLanguage::French;
+                }
+                else if (k == "isEnglish") language = std::stoi(v) ? UiLanguage::English : UiLanguage::Chinese;
                 else if (k == "petInteraction") petInteraction = (std::stoi(v) != 0);
                 else if (k == "fullClickThrough") fullClickThrough = (std::stoi(v) != 0);
                 else if (k == "alwaysOnTop") alwaysOnTop = (std::stoi(v) != 0);
@@ -150,7 +156,7 @@ struct CatSettings {
           << "whiteOutline=" << (whiteOutline ? 1 : 0) << "\n"
           << "enableAnger=" << (enableAnger ? 1 : 0) << "\n"
           << "enableDragAnimation=" << (enableDragAnimation ? 1 : 0) << "\n"
-          << "isEnglish=" << (isEnglish ? 1 : 0) << "\n"
+          << "language=" << localized(language, "zh", "en", "fr") << "\n"
           << "petInteraction=" << (petInteraction ? 1 : 0) << "\n"
           << "fullClickThrough=" << (fullClickThrough ? 1 : 0) << "\n"
           << "alwaysOnTop=" << (alwaysOnTop ? 1 : 0) << "\n"
@@ -490,9 +496,9 @@ public:
             pupilScale.target = 1.12f;
             earTwitch.velocity -= 2.2f;
             if (settings.showMouseBadges) {
-                std::string lbl = settings.isEnglish
-                    ? (button == 0 ? "LMB" : (button == 1 ? "RMB" : "MMB"))
-                    : ((button == 0) ? "左键" : (button == 1 ? "右键" : "中键"));
+                const char* lbl = button == 0 ? localized(settings.language, "左键", "LMB", "Gauche")
+                    : button == 1 ? localized(settings.language, "右键", "RMB", "Droite")
+                    : localized(settings.language, "中键", "MMB", "Milieu");
                 Pt pt = { MouseBaseCenter.x + mouseOffset.point().x, MouseBaseCenter.y + mouseOffset.point().y - 6.0f };
                 spawnFloatingKeycap(lbl, pt, now);
             }

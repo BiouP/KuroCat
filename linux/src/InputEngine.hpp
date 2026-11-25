@@ -25,6 +25,7 @@
 #undef None
 #endif
 #include "KeyMap.hpp"
+#include "../../shared/UiLanguage.hpp"
 
 inline double nowSeconds() {
     static const auto start = std::chrono::steady_clock::now();
@@ -73,11 +74,11 @@ public:
         if (evdevThread_.joinable()) evdevThread_.join();
     }
 
-    std::string statusText() const {
-        if (isEvdevActive && isXI2Active) return "🟢 硬件全状态监听中 (evdev + XInput2)";
-        if (isEvdevActive) return "🟢 内核硬件监听中 (evdev Wayland/X11)";
-        if (isXI2Active) return "🟢 全局原始监听中 (XInput2 打字/游戏)";
-        return "⚠️ Wayland 需加入 input 组以全局监听";
+    std::string statusText(UiLanguage language) const {
+        if (isEvdevActive && isXI2Active) return localized(language, "🟢 硬件全状态监听中 (evdev + XInput2)", "🟢 Hardware input active (evdev + XInput2)", "🟢 Capture des entrées active (evdev + XInput2)");
+        if (isEvdevActive) return localized(language, "🟢 内核硬件监听中 (evdev Wayland/X11)", "🟢 Hardware input active (evdev Wayland/X11)", "🟢 Capture des entrées active (evdev Wayland/X11)");
+        if (isXI2Active) return localized(language, "🟢 全局原始监听中 (XInput2 打字/游戏)", "🟢 Global input active (XInput2)", "🟢 Capture globale active (XInput2)");
+        return localized(language, "⚠️ Wayland 需加入 input 组以全局监听", "⚠️ Join the input group for global capture on Wayland", "⚠️ Sous Wayland, rejoignez le groupe input pour activer la capture globale");
     }
 
     /// Drains queued events from background input threads and updates mouse velocity on main 60Hz loop.

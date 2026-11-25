@@ -235,7 +235,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
             button.image = makeMenuBarCatIcon()
-            button.toolTip = "KuroCat 黑猫键盘桌宠"
+            button.toolTip = tr("KuroCat 黑猫键盘桌宠", french: "KuroCat, chat de bureau")
         }
         let menu = NSMenu()
         menu.delegate = self
@@ -255,38 +255,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let engine = InputEngine.shared
         let settings = CatSettings.shared
         let physics = overlayWindow.catView.physics
-        let en = settings.isEnglish
-
-        func tr(_ zh: String, _ eng: String) -> String { en ? eng : zh }
 
         // Status header
         let statusPrefix = engine.status.needsAttention ? "⚠️" : "🟢"
-        let statusText: String
-        if en {
-            switch engine.status {
-            case .fullHardware: statusText = "Hardware Input Active (HID + EventTap)"
-            case .hidOnly: statusText = "Hardware HID Active"
-            case .eventTapOnly: statusText = "Global EventTap Active"
-            case .needsPermission: statusText = "Input Monitoring Permission Needed"
-            case .needsRestart: statusText = "Authorized — Restart to Retry"
-            }
-        } else {
-            statusText = engine.status.rawValue
-        }
+        let statusText = engine.status.displayName
         let statusItem = NSMenuItem(title: "\(statusPrefix) \(statusText)", action: engine.status.needsAttention ? #selector(openInputMonitoringSettings) : nil, keyEquivalent: "")
         statusItem.target = self
         menu.addItem(statusItem)
 
         if engine.status == .needsPermission {
-            let grantItem = NSMenuItem(title: tr("🔑 前往系统设置开启「输入监控」...", "🔑 Open Input Monitoring Settings..."), action: #selector(openInputMonitoringSettings), keyEquivalent: "")
+            let grantItem = NSMenuItem(title: tr("🔑 前往系统设置开启「输入监控」...", "🔑 Open Input Monitoring Settings...", "🔑 Ouvrir les réglages de surveillance de l’entrée…"), action: #selector(openInputMonitoringSettings), keyEquivalent: "")
             grantItem.target = self
             menu.addItem(grantItem)
         }
 
         // Live stats
-        let statsTitle = en
-            ? "⌨️ Today \(engine.totalKeystrokesToday)  ·  KPM \(engine.currentKPM)  ·  Pets \(physics.totalPetSessions)"
-            : "⌨️ 今日击键 \(engine.totalKeystrokesToday)  ·  KPM \(engine.currentKPM)  ·  摸猫 \(physics.totalPetSessions) 次"
+        let statsTitle = tr(
+            "⌨️ 今日击键 \(engine.totalKeystrokesToday)  ·  KPM \(engine.currentKPM)  ·  摸猫 \(physics.totalPetSessions) 次",
+            "⌨️ Today \(engine.totalKeystrokesToday)  ·  KPM \(engine.currentKPM)  ·  Pets \(physics.totalPetSessions)",
+            "⌨️ Frappes du jour \(engine.totalKeystrokesToday)  ·  Frappes/min \(engine.currentKPM)  ·  Caresses \(physics.totalPetSessions)")
         let statsItem = NSMenuItem(title: statsTitle, action: nil, keyEquivalent: "")
         statsItem.isEnabled = false
         menu.addItem(statsItem)
@@ -294,14 +281,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
 
         // Essential everyday actions only — everything else lives cleanly in the unified Settings window!
-        let visItem = NSMenuItem(title: isPetVisible ? tr("隐藏桌宠", "Hide Pet") : tr("显示桌宠", "Show Pet"), action: #selector(toggleVisibility), keyEquivalent: "")
+        let visItem = NSMenuItem(title: isPetVisible ? tr("隐藏桌宠", "Hide Pet", "Masquer le chat") : tr("显示桌宠", "Show Pet", "Afficher le chat"), action: #selector(toggleVisibility), keyEquivalent: "")
         visItem.target = self
         menu.addItem(visItem)
 
         let editItem = NSMenuItem(
             title: settings.isEditMode
-                ? tr("✓ 完成调整大小与方向", "✓ Finish Resize & Direction")
-                : tr("调整大小与方向 (双击小猫)", "Resize & Direction (Double-Click)"),
+                ? tr("✓ 完成调整大小与方向", "✓ Finish Resize & Direction", "✓ Terminer les ajustements")
+                : tr("调整大小与方向 (双击小猫)", "Resize & Direction (Double-Click)", "Taille et orientation (double-clic)"),
             action: #selector(toggleEditMode),
             keyEquivalent: ""
         )
@@ -314,18 +301,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let library = SkinLibrary.shared
         let customActive = library.skin(id: settings.customSkin) != nil
         for coat in CatCoatTheme.allCases {
-            let coatTitle: String
-            if en {
-                switch coat {
-                case .classicBlack: coatTitle = "Classic Black Cat"
-                case .siamese: coatTitle = "Siamese Cat"
-                case .shorthair: coatTitle = "Silver Tabby Shorthair"
-                case .orangeWhite: coatTitle = "Orange & White Cat"
-                }
-            } else {
-                coatTitle = coat.rawValue
-            }
-            let item = NSMenuItem(title: coatTitle, action: #selector(selectCoatTheme(_:)), keyEquivalent: "")
+            let item = NSMenuItem(title: coat.displayName, action: #selector(selectCoatTheme(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = coat.rawValue
             item.state = !customActive && settings.coatTheme == coat ? .on : .off
@@ -338,18 +314,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 item.target = self
                 item.representedObject = skin.id
                 item.state = settings.customSkin == skin.id ? .on : .off
-                if !skin.author.isEmpty { item.toolTip = tr("作者：\(skin.author)", "Author: \(skin.author)") }
+                if !skin.author.isEmpty { item.toolTip = tr("作者：\(skin.author)", "Author: \(skin.author)", "Par \(skin.author)") }
                 coatMenu.addItem(item)
             }
         }
         coatMenu.addItem(.separator())
-        let importItem = NSMenuItem(title: tr("导入皮肤…", "Import Skin…"), action: #selector(showDressingRoom), keyEquivalent: "")
+        let importItem = NSMenuItem(title: tr("导入皮肤…", "Import Skin…", "Importer un pelage…"), action: #selector(showDressingRoom), keyEquivalent: "")
         importItem.target = self
         coatMenu.addItem(importItem)
-        let workshopItem = NSMenuItem(title: tr("打开皮肤工坊…", "Open Skin Workshop…"), action: #selector(openSkinWorkshop), keyEquivalent: "")
+        let workshopItem = NSMenuItem(title: tr("打开皮肤工坊…", "Open Skin Workshop…", "Ouvrir l’atelier de pelages…"), action: #selector(openSkinWorkshop), keyEquivalent: "")
         workshopItem.target = self
         coatMenu.addItem(workshopItem)
-        let openDirItem = NSMenuItem(title: tr("打开皮肤文件夹", "Open Skins Folder"), action: #selector(openSkinsFolder), keyEquivalent: "")
+        let openDirItem = NSMenuItem(title: tr("打开皮肤文件夹", "Open Skins Folder", "Ouvrir le dossier des pelages"), action: #selector(openSkinsFolder), keyEquivalent: "")
         openDirItem.target = self
         coatMenu.addItem(openDirItem)
         if !library.skins.isEmpty {
@@ -361,7 +337,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 item.representedObject = skin.id
                 renameMenu.addItem(item)
             }
-            let renameParent = NSMenuItem(title: tr("✏️ 重命名皮肤…", "✏️ Rename Skin…"), action: nil, keyEquivalent: "")
+            let renameParent = NSMenuItem(title: tr("✏️ 重命名皮肤…", "✏️ Rename Skin…", "✏️ Renommer un pelage…"), action: nil, keyEquivalent: "")
             renameParent.submenu = renameMenu
             coatMenu.addItem(renameParent)
 
@@ -377,7 +353,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 item.representedObject = skin.id
                 deleteMenu.addItem(item)
             }
-            let deleteTitle = tr("🗑 删除已导入皮肤…", "🗑 Delete Imported Skin…")
+            let deleteTitle = tr("🗑 删除已导入皮肤…", "🗑 Delete Imported Skin…", "🗑 Supprimer un pelage importé…")
             let deleteParent = NSMenuItem(title: deleteTitle, action: nil, keyEquivalent: "")
             deleteParent.attributedTitle = NSAttributedString(
                 string: deleteTitle,
@@ -386,12 +362,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             deleteParent.submenu = deleteMenu
             coatMenu.addItem(deleteParent)
         }
-        let coatParent = NSMenuItem(title: tr("猫咪皮肤 🐱", "Cat Skin 🐱"), action: nil, keyEquivalent: "")
+        let coatParent = NSMenuItem(title: tr("猫咪皮肤 🐱", "Cat Skin 🐱", "Pelage 🐱"), action: nil, keyEquivalent: "")
         coatParent.submenu = coatMenu
         menu.addItem(coatParent)
 
         let topWorkshopItem = NSMenuItem(
-            title: tr("🎨 皮肤工坊（制作皮肤）…", "🎨 Skin Workshop (Create Skins)…"),
+            title: tr("🎨 皮肤工坊（制作皮肤）…", "🎨 Skin Workshop (Create Skins)…", "🎨 Atelier de pelages…"),
             action: #selector(openSkinWorkshop),
             keyEquivalent: ""
         )
@@ -399,7 +375,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(topWorkshopItem)
 
         let levelKbItem = NSMenuItem(
-            title: tr("键盘水平摆放（平行屏幕）", "Level Keyboard (Parallel to Screen)"),
+            title: tr("键盘水平摆放（平行屏幕）", "Level Keyboard (Parallel to Screen)", "Clavier parallèle à l’écran"),
             action: #selector(toggleLevelKeyboard),
             keyEquivalent: ""
         )
@@ -407,7 +383,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         levelKbItem.state = settings.levelKeyboard ? .on : .off
         menu.addItem(levelKbItem)
 
-        let settingsItem = NSMenuItem(title: tr("⚙️ 设置…", "⚙️ Settings…"), action: #selector(openSettingsWindow), keyEquivalent: ",")
+        let settingsItem = NSMenuItem(title: tr("⚙️ 设置…", "⚙️ Settings…", "⚙️ Réglages…"), action: #selector(openSettingsWindow), keyEquivalent: ",")
         settingsItem.target = self
         menu.addItem(settingsItem)
 
@@ -415,15 +391,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if let ver = availableUpdateVersion {
             let title = isUpdating
-                ? tr("⏳ 正在下载更新 \(ver)...", "⏳ Downloading update \(ver)...")
-                : tr("🆕 发现新版本 \(ver) — 点击自动更新", "🆕 Update Available \(ver) — Click to Update")
+                ? tr("⏳ 正在下载更新 \(ver)...", "⏳ Downloading update \(ver)...", "⏳ Téléchargement de la mise à jour \(ver)…")
+                : tr("🆕 发现新版本 \(ver) — 点击自动更新", "🆕 Update Available \(ver) — Click to Update", "🆕 Installer la mise à jour \(ver)")
             let updateItem = NSMenuItem(title: title, action: #selector(openUpdateDownload), keyEquivalent: "")
             updateItem.target = self
             updateItem.isEnabled = !isUpdating
             menu.addItem(updateItem)
         } else {
             let checkItem = NSMenuItem(
-                title: tr("检查更新 (v\(currentAppVersion))", "Check for Updates (v\(currentAppVersion))"),
+                title: tr("检查更新 (v\(currentAppVersion))", "Check for Updates (v\(currentAppVersion))", "Rechercher des mises à jour (v\(currentAppVersion))"),
                 action: #selector(manualCheckForUpdates),
                 keyEquivalent: ""
             )
@@ -432,15 +408,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         menu.addItem(.separator())
-        let testToastItem = NSMenuItem(title: "🕒 测试整点报时弹窗", action: #selector(testHourlyToast), keyEquivalent: "")
+        let testToastItem = NSMenuItem(title: tr("🕒 测试整点报时弹窗", french: "🕒 Tester l’annonce horaire"), action: #selector(testHourlyToast), keyEquivalent: "")
         testToastItem.target = self
         menu.addItem(testToastItem)
 
-        let relaunchItem = NSMenuItem(title: tr("重启 KuroCat", "Restart KuroCat"), action: #selector(relaunchApp), keyEquivalent: "")
+        let relaunchItem = NSMenuItem(title: tr("重启 KuroCat", "Restart KuroCat", "Relancer KuroCat"), action: #selector(relaunchApp), keyEquivalent: "")
         relaunchItem.target = self
         menu.addItem(relaunchItem)
 
-        let quitItem = NSMenuItem(title: tr("退出 KuroCat", "Quit KuroCat"), action: #selector(quitApp), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: tr("退出 KuroCat", "Quit KuroCat", "Quitter KuroCat"), action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
 
@@ -495,7 +471,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 _ = self?.setAutoStartEnabled(on)
             }
             ctrl.onLanguageChanged = { [weak self] in
-                self?.overlayWindow.catView.needsDisplay = true
+                guard let self else { return }
+                self.dressingRoom?.close()
+                self.dressingRoom = nil
+                self.statusItem?.button?.toolTip = tr("KuroCat 黑猫键盘桌宠", french: "KuroCat, chat de bureau")
+                self.overlayWindow.catView.needsDisplay = true
             }
             settingsWindow = ctrl
         }
@@ -508,11 +488,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if InputEngine.shared.status == .needsRestart {
             NSApp.activate(ignoringOtherApps: true)
             let alert = NSAlert()
-            alert.messageText = "已授权，键盘监听启动失败"
-            alert.informativeText = "请重启 KuroCat，让系统重新建立键盘监听。\n当前程序位置：\(Bundle.main.bundlePath)"
-            alert.addButton(withTitle: "重启 KuroCat")
-            alert.addButton(withTitle: "打开输入监控")
-            alert.addButton(withTitle: "取消")
+            alert.messageText = tr("已授权，键盘监听启动失败", french: "Autorisation accordée, mais la capture du clavier a échoué")
+            alert.informativeText = tr("请重启 KuroCat，让系统重新建立键盘监听。\n当前程序位置：\(Bundle.main.bundlePath)", french: "Relancez KuroCat pour rétablir la capture du clavier.\nEmplacement actuel de l’app : \(Bundle.main.bundlePath)")
+            alert.addButton(withTitle: tr("重启 KuroCat", french: "Relancer KuroCat"))
+            alert.addButton(withTitle: tr("打开输入监控", french: "Ouvrir Surveillance de l’entrée"))
+            alert.addButton(withTitle: tr("取消", french: "Annuler"))
             let response = alert.runModal()
             if response == .alertFirstButtonReturn {
                 relaunchApp()
@@ -716,12 +696,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         overlayWindow.catView.needsDisplay = true
     }
 
-    @objc private func selectLanguage(_ sender: NSMenuItem) {
-        guard let code = sender.representedObject as? String else { return }
-        CatSettings.shared.language = code
-        overlayWindow.catView.needsDisplay = true
-    }
-
     @objc private func selectScale(_ sender: NSMenuItem) {
         guard let num = sender.representedObject as? NSNumber else { return }
         overlayWindow.applyScale(CGFloat(num.doubleValue))
@@ -793,10 +767,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let id = try SkinLibrary.shared.importFile(url)
             CatSettings.shared.customSkin = id
             let skin = SkinLibrary.shared.skin(id: id)
-            var message = "已换上「\(skin?.name ?? "新皮肤")」"
-            if let author = skin?.author, !author.isEmpty { message += "（作者：\(author)）" }
+            var message = tr("已换上「\(skin?.name ?? "新皮肤")」", french: "Pelage « \(skin?.name ?? "Nouveau pelage") » appliqué")
+            if let author = skin?.author, !author.isEmpty { message += tr("（作者：\(author)）", french: " (par \(author))") }
             if let sk = skin, SkinLibrary.shared.skins.filter({ $0.name == sk.name }).count > 1 {
-                message += " · 存在同名皮肤，已附加短编号区分"
+                message += tr(" · 存在同名皮肤，已附加短编号区分", french: " · Un identifiant distingue les pelages du même nom")
             }
             dressingRoom?.setStatus("✓ " + message, kind: 1)
             dressingRoom?.refresh()
@@ -805,14 +779,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let reason = error.localizedDescription
             // With 换装间 open the red status line explains it in place; an alert is only for drops onto the cat.
             if let room = dressingRoom, room.isVisible {
-                room.setStatus("没能导入「\(url.lastPathComponent)」：\(reason)", kind: 2)
+                room.setStatus(tr("没能导入「\(url.lastPathComponent)」：\(reason)", french: "Impossible d’importer « \(url.lastPathComponent) » : \(reason)"), kind: 2)
                 return
             }
             let alert = NSAlert()
             alert.alertStyle = .warning
-            alert.messageText = "无法导入这个皮肤"
+            alert.messageText = tr("无法导入这个皮肤", french: "Impossible d’importer ce pelage")
             alert.informativeText = "「\(url.lastPathComponent)」：\(reason)"
-            alert.addButton(withTitle: "知道了")
+            alert.addButton(withTitle: tr("知道了", french: "OK"))
             NSApp.activate(ignoringOtherApps: true)
             alert.runModal()
         }
@@ -832,12 +806,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func performRenameSkin(id: String) {
         guard let skin = SkinLibrary.shared.skin(id: id) else { return }
-        let en = CatSettings.shared.isEnglish
         let alert = NSAlert()
-        alert.messageText = en ? "Rename Skin" : "重命名皮肤"
-        alert.informativeText = en ? "Enter a new name for \"\(skin.name)\" (up to 40 characters):" : "为「\(skin.name)」输入新的名称（最多 40 字）："
-        alert.addButton(withTitle: en ? "Rename" : "保存")
-        alert.addButton(withTitle: en ? "Cancel" : "取消")
+        alert.messageText = tr("重命名皮肤", "Rename Skin", "Renommer le pelage")
+        alert.informativeText = tr("为「\(skin.name)」输入新的名称（最多 40 字）：", "Enter a new name for \"\(skin.name)\" (up to 40 characters):", "Nouveau nom pour « \(skin.name) » (40 caractères maximum)")
+        alert.addButton(withTitle: tr("保存", "Rename", "Renommer"))
+        alert.addButton(withTitle: tr("取消", "Cancel", "Annuler"))
 
         let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
         input.stringValue = skin.name
@@ -858,7 +831,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         } catch {
             let failed = NSAlert()
             failed.alertStyle = .warning
-            failed.messageText = en ? "Rename Failed" : "重命名失败"
+            failed.messageText = tr("重命名失败", "Rename Failed", "Échec du renommage")
             failed.informativeText = error.localizedDescription
             failed.runModal()
         }
@@ -873,17 +846,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let skin = SkinLibrary.shared.skin(id: id) else { return }
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "删除皮肤「\(skin.name)」？"
-        alert.informativeText = "会从皮肤文件夹里删除这个文件，删除后需要重新导入。"
-        let delBtn = alert.addButton(withTitle: "🗑 删除")
+        alert.messageText = tr("删除皮肤「\(skin.name)」？", french: "Supprimer le pelage « \(skin.name) » ?")
+        alert.informativeText = tr("会从皮肤文件夹里删除这个文件，删除后需要重新导入。", french: "Pour utiliser à nouveau ce pelage, vous devrez le réimporter.")
+        let delBtn = alert.addButton(withTitle: tr("🗑 删除", french: "🗑 Supprimer"))
         if #available(macOS 11.0, *) { delBtn.hasDestructiveAction = true }
-        alert.addButton(withTitle: "取消")
+        alert.addButton(withTitle: tr("取消", french: "Annuler"))
         NSApp.activate(ignoringOtherApps: true)
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         if !SkinLibrary.shared.remove(id: id) {
             let failed = NSAlert()
-            failed.messageText = "删除失败"
-            failed.informativeText = "无法删除 \(SkinLibrary.directory.appendingPathComponent("\(id).kurocat").path)"
+            failed.messageText = tr("删除失败", french: "Échec de la suppression")
+            failed.informativeText = tr("无法删除 \(SkinLibrary.directory.appendingPathComponent("\(id).kurocat").path)", french: "Impossible de supprimer \(SkinLibrary.directory.appendingPathComponent("\(id).kurocat").path)")
             failed.runModal()
             return
         }
@@ -917,9 +890,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func promptImportKeyboardSkin() {
-        let en = CatSettings.shared.isEnglish
         let panel = NSOpenPanel()
-        panel.title = en ? "Choose Keyboard Skin (.kurokb / .json)" : "选择键盘皮肤文件 (.kurokb / .json)"
+        panel.title = tr("选择键盘皮肤文件 (.kurokb / .json)", "Choose Keyboard Skin (.kurokb / .json)", "Choisir un thème de clavier (.kurokb / .json)")
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
@@ -935,18 +907,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let id = try KeyboardSkinLibrary.shared.importFile(url)
             CatSettings.shared.customKeyboard = id
             let kb = KeyboardSkinLibrary.shared.skin(id: id)
-            var message = "已换上键盘皮肤「\(kb?.name ?? "新键盘")」"
-            if let author = kb?.author, !author.isEmpty { message += "（作者：\(author)）" }
+            var message = tr("已换上键盘皮肤「\(kb?.name ?? "新键盘")」", french: "Thème de clavier « \(kb?.name ?? "Nouveau thème") » appliqué")
+            if let author = kb?.author, !author.isEmpty { message += tr("（作者：\(author)）", french: " (par \(author))") }
             dressingRoom?.setStatus("✓ " + message, kind: 1)
             overlayWindow.catView.needsDisplay = true
             settingsWindow?.refresh()
         } catch {
-            let en = CatSettings.shared.isEnglish
             let alert = NSAlert()
             alert.alertStyle = .warning
-            alert.messageText = en ? "Failed to Import Keyboard Skin" : "无法导入这个键盘皮肤"
+            alert.messageText = tr("无法导入这个键盘皮肤", "Failed to Import Keyboard Skin", "Impossible d’importer le thème de clavier")
             alert.informativeText = "「\(url.lastPathComponent)」：\(error.localizedDescription)"
-            alert.addButton(withTitle: en ? "OK" : "知道了")
+            alert.addButton(withTitle: tr("知道了", "OK", "OK"))
             NSApp.activate(ignoringOtherApps: true)
             alert.runModal()
         }
@@ -955,16 +926,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func deleteCustomKeyboard(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? String, let kb = KeyboardSkinLibrary.shared.skin(id: id) else { return }
         let alert = NSAlert()
-        alert.messageText = "删除键盘皮肤「\(kb.name)」？"
-        alert.informativeText = "会从键盘皮肤文件夹里删除这个文件，删除后需要重新导入。"
-        alert.addButton(withTitle: "删除")
-        alert.addButton(withTitle: "取消")
+        alert.messageText = tr("删除键盘皮肤「\(kb.name)」？", french: "Supprimer le thème de clavier « \(kb.name) » ?")
+        alert.informativeText = tr("会从键盘皮肤文件夹里删除这个文件，删除后需要重新导入。", french: "Pour utiliser à nouveau ce thème, vous devrez le réimporter.")
+        alert.addButton(withTitle: tr("删除", french: "Supprimer"))
+        alert.addButton(withTitle: tr("取消", french: "Annuler"))
         NSApp.activate(ignoringOtherApps: true)
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         if !KeyboardSkinLibrary.shared.remove(id: id) {
             let failed = NSAlert()
-            failed.messageText = "删除失败"
-            failed.informativeText = "无法删除 \(KeyboardSkinLibrary.directory.appendingPathComponent("\(id).kurokb").path)"
+            failed.messageText = tr("删除失败", french: "Échec de la suppression")
+            failed.informativeText = tr("无法删除 \(KeyboardSkinLibrary.directory.appendingPathComponent("\(id).kurokb").path)", french: "Impossible de supprimer \(KeyboardSkinLibrary.directory.appendingPathComponent("\(id).kurokb").path)")
             failed.runModal()
             return
         }
@@ -1085,7 +1056,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     if let info = fallback {
                         self.handleUpdateResult(info, manual: manual)
                     } else if manual {
-                        self.showInfoAlert(title: "检查更新失败", message: "无法连接到更新服务器，请稍后重试或检查网络连接。")
+                        self.showInfoAlert(title: tr("检查更新失败", french: "Échec de la recherche de mises à jour"), message: tr("无法连接到更新服务器，请稍后重试或检查网络连接。", french: "Impossible de joindre le serveur de mises à jour. Vérifiez votre connexion ou réessayez plus tard."))
                     }
                 }
             }
@@ -1099,10 +1070,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             NSApp.activate(ignoringOtherApps: true)
             let alert = NSAlert()
             alert.alertStyle = .informational
-            alert.messageText = "你已经下载了新版本 v\(local.version)"
-            alert.informativeText = "但现在运行的还是旧版 v\(currentAppVersion)：\n\(Bundle.main.bundlePath)\n\n新版本位置：\n\(local.url.path)\n\n点击「切换到新版本」会关闭旧版并打开新版。建议把新版拖进「应用程序」文件夹并删除旧版。"
-            alert.addButton(withTitle: "切换到新版本")
-            alert.addButton(withTitle: "稍后再说")
+            alert.messageText = tr("你已经下载了新版本 v\(local.version)", french: "La version v\(local.version) est déjà téléchargée")
+            alert.informativeText = tr("但现在运行的还是旧版 v\(currentAppVersion)：\n\(Bundle.main.bundlePath)\n\n新版本位置：\n\(local.url.path)\n\n点击「切换到新版本」会关闭旧版并打开新版。建议把新版拖进「应用程序」文件夹并删除旧版。", french: "Version en cours : v\(currentAppVersion)\n\(Bundle.main.bundlePath)\n\nNouvelle version :\n\(local.url.path)\n\nOuvrir la nouvelle version fermera celle-ci. Glissez la nouvelle app dans le dossier Applications.")
+            alert.addButton(withTitle: tr("切换到新版本", french: "Ouvrir la nouvelle version"))
+            alert.addButton(withTitle: tr("稍后再说", french: "Plus tard"))
             if alert.runModal() == .alertFirstButtonReturn {
                 switchToDownloadedCopy(local.url)
             }
@@ -1114,7 +1085,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             availableAssetURL = info.assetURL
             promptUpdateAvailable(latestTag: info.tag)
         } else if manual {
-            showInfoAlert(title: "已是最新版本", message: "当前版本 v\(currentAppVersion) 已是最新版本。")
+            showInfoAlert(title: tr("已是最新版本", french: "KuroCat est à jour"), message: tr("当前版本 v\(currentAppVersion) 已是最新版本。", french: "Vous utilisez la dernière version (v\(currentAppVersion))."))
         }
     }
 
@@ -1138,11 +1109,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.alertStyle = .informational
-        alert.messageText = "发现 KuroCat 新版本 \(latestTag)"
-        alert.informativeText = "当前版本：v\(currentAppVersion)\n最新版本：\(latestTag)\n当前运行位置：\(Bundle.main.bundlePath)\n\n点击「立即更新」将在后台自动下载安装包并重启应用。"
-        alert.addButton(withTitle: "立即更新")
-        alert.addButton(withTitle: "打开下载页")
-        alert.addButton(withTitle: "稍后再说")
+        alert.messageText = tr("发现 KuroCat 新版本 \(latestTag)", french: "KuroCat \(latestTag) est disponible")
+        alert.informativeText = tr("当前版本：v\(currentAppVersion)\n最新版本：\(latestTag)\n当前运行位置：\(Bundle.main.bundlePath)\n\n点击「立即更新」将在后台自动下载安装包并重启应用。", french: "Version actuelle : v\(currentAppVersion)\nDernière version : \(latestTag)\nEmplacement actuel : \(Bundle.main.bundlePath)\n\nLa mise à jour se téléchargera en arrière-plan, puis KuroCat redémarrera.")
+        alert.addButton(withTitle: tr("立即更新", french: "Mettre à jour"))
+        alert.addButton(withTitle: tr("打开下载页", french: "Ouvrir la page de téléchargement"))
+        alert.addButton(withTitle: tr("稍后再说", french: "Plus tard"))
         let resp = alert.runModal()
         if resp == .alertFirstButtonReturn {
             performInAppUpdate()
@@ -1277,10 +1248,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "自动更新失败"
-        alert.informativeText = "下载或替换安装包时出错，是否打开下载页手动下载？"
-        alert.addButton(withTitle: "打开下载页")
-        alert.addButton(withTitle: "取消")
+        alert.messageText = tr("自动更新失败", french: "Échec de la mise à jour automatique")
+        alert.informativeText = tr("下载或替换安装包时出错，是否打开下载页手动下载？", french: "Une erreur est survenue pendant la mise à jour. Ouvrir la page de téléchargement ?")
+        alert.addButton(withTitle: tr("打开下载页", french: "Ouvrir la page de téléchargement"))
+        alert.addButton(withTitle: tr("取消", french: "Annuler"))
         if alert.runModal() == .alertFirstButtonReturn {
             let fallback = URL(string: Self.updatePageURLString)!
             NSWorkspace.shared.open(availableUpdateURL ?? fallback)
@@ -1293,7 +1264,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         alert.alertStyle = .informational
         alert.messageText = title
         alert.informativeText = message
-        alert.addButton(withTitle: "好")
+        alert.addButton(withTitle: tr("好", french: "OK"))
         alert.runModal()
     }
 
@@ -1374,7 +1345,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             period = hour < 18 ? "下午" : "晚上"
             displayHour = hour - 12
         }
-        let text = "🕐 \(period) \(displayHour) 点整"
+        let text = tr("🕐 \(period) \(displayHour) 点整", french: "🕐 \(hour) h 00")
         overlayWindow.catView.showToast(text: text)
     }
 }

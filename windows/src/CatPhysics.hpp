@@ -9,6 +9,7 @@
 #include <algorithm>
 #include "KeyMap.hpp"
 #include "InputEngine.hpp"
+#include "../../shared/UiLanguage.hpp"
 
 enum class CatCoatTheme : int {
     ClassicBlack = 0,
@@ -52,7 +53,7 @@ struct CatSettings {
     bool whiteOutline = true;
     bool enableAnger = true;
     bool enableDragAnimation = true;
-    bool isEnglish = false;
+    UiLanguage language = UiLanguage::Chinese;
     bool isEditMode = false; // runtime-only interactive resize & rotate box
     bool petInteraction = true;
     bool fullClickThrough = false;
@@ -70,6 +71,7 @@ struct CatSettings {
     int posY = -99999;
 
     void loadFromRegistry() {
+        language = PRIMARYLANGID(GetUserDefaultUILanguage()) == LANG_FRENCH ? UiLanguage::French : UiLanguage::Chinese;
         HKEY hKey = nullptr;
         if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\KuroCat", 0, KEY_READ, &hKey) != ERROR_SUCCESS) return;
         auto readDword = [&](const wchar_t* name, DWORD defVal) -> DWORD {
@@ -97,7 +99,14 @@ struct CatSettings {
         whiteOutline     = readDword(L"WhiteOutline", 1) != 0;
         enableAnger      = readDword(L"EnableAnger", 1) != 0;
         enableDragAnimation = readDword(L"EnableDragAnimation", 1) != 0;
-        isEnglish        = readDword(L"LanguageEnglish", 0) != 0;
+        constexpr DWORD unset = static_cast<DWORD>(-1);
+        const DWORD savedLanguage = readDword(L"Language", unset);
+        if (savedLanguage <= static_cast<DWORD>(UiLanguage::French)) {
+            language = static_cast<UiLanguage>(savedLanguage);
+        } else {
+            const DWORD legacyEnglish = readDword(L"LanguageEnglish", unset);
+            if (legacyEnglish != unset) language = legacyEnglish ? UiLanguage::English : UiLanguage::Chinese;
+        }
         petInteraction   = readDword(L"PetInteraction", 1) != 0;
         fullClickThrough = readDword(L"FullClickThrough", 0) != 0;
         alwaysOnTop      = readDword(L"AlwaysOnTop", 1) != 0;
@@ -162,7 +171,7 @@ struct CatSettings {
         writeDword(L"WhiteOutline", whiteOutline ? 1 : 0);
         writeDword(L"EnableAnger", enableAnger ? 1 : 0);
         writeDword(L"EnableDragAnimation", enableDragAnimation ? 1 : 0);
-        writeDword(L"LanguageEnglish", isEnglish ? 1 : 0);
+        writeDword(L"Language", static_cast<DWORD>(language));
         writeDword(L"PetInteraction", petInteraction ? 1 : 0);
         writeDword(L"FullClickThrough", fullClickThrough ? 1 : 0);
         writeDword(L"AlwaysOnTop", alwaysOnTop ? 1 : 0);
@@ -515,9 +524,9 @@ public:
             pupilScale.target = 1.12f;
             earTwitch.velocity -= 2.2f;
             if (settings.showMouseBadges) {
-                std::wstring lbl = settings.isEnglish
-                    ? (button == 0 ? L"LMB" : (button == 1 ? L"RMB" : L"MMB"))
-                    : ((button == 0) ? L"\u5DE6\u952E" : (button == 1 ? L"\u53F3\u952E" : L"\u4E2D\u952E"));
+                const wchar_t* lbl = button == 0 ? localized(settings.language, L"\u5DE6\u952E", L"LMB", L"Gauche")
+                    : button == 1 ? localized(settings.language, L"\u53F3\u952E", L"RMB", L"Droite")
+                    : localized(settings.language, L"\u4E2D\u952E", L"MMB", L"Milieu");
                 Pt pt = { MouseBaseCenter.x + mouseOffset.point().x, MouseBaseCenter.y + mouseOffset.point().y - 6.0f };
                 spawnFloatingKeycap(lbl, pt, now);
             }

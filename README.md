@@ -14,7 +14,7 @@
 </p>
 
 <p>
-  <b>简体中文</b> | <a href="README.en.md">English</a> ·
+  <b>简体中文</b> | <a href="README.en.md">English</a> | <a href="README.fr.md">Français</a> ·
   <a href="https://kurocat.cc/">🌐 官方首页（网页试玩）</a> ·
   <a href="https://workshop.kurocat.cc/">🎨 皮肤工坊 &amp; 广场</a> ·
   <a href="https://kurocat.cc/obs-guide/">🎥 OBS 直播指南</a> ·

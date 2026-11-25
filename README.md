@@ -34,6 +34,16 @@
 
 ---
 
+## Quand Codex travaille
+
+KuroCat tape par petites rafales, lève les yeux pendant une pause de réflexion, puis s’étire à la fin de la tâche. Une bulle animée signale le travail en cours et une coche verte apparaît quand Codex termine.
+
+<p align="center">
+  <img src="assets/demo_codex.gif" width="480" alt="KuroCat tape au clavier, réfléchit, puis s’étire quand une coche verte apparaît"/>
+</p>
+
+Cette séquence simule une tâche Codex pour présenter l’intégration Linux en cours de développement.
+
 ## Ce que fait KuroCat
 
 - **Clavier et souris.** Le chat réagit aux touches maintenues, aux combinaisons et aux mouvements de souris. L’animation peut utiliser une patte arrière dès la troisième touche et la queue à partir de la quatrième. Un compteur affiche les frappes du jour et les frappes par minute.

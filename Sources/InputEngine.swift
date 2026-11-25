@@ -16,7 +16,19 @@ enum InputEngineStatus: String {
     }
 
     var permissionPillText: String {
-        self == .needsRestart ? "监听启动失败，点击重启重试 ↻" : "点击开启全局/游戏键盘监听 🔑"
+        self == .needsRestart
+            ? tr("监听启动失败，点击重启重试 ↻", french: "Relancer KuroCat pour rétablir la capture ↻")
+            : tr("点击开启全局/游戏键盘监听 🔑", french: "Autoriser la capture du clavier 🔑")
+    }
+
+    var displayName: String {
+        switch self {
+        case .fullHardware: return tr(rawValue, "Hardware Input Active (HID + EventTap)", "Capture des entrées active (HID + EventTap)")
+        case .hidOnly: return tr(rawValue, "Hardware HID Active", "Capture matérielle active (HID)")
+        case .eventTapOnly: return tr(rawValue, "Global EventTap Active", "Capture globale active (EventTap)")
+        case .needsPermission: return tr(rawValue, "Input Monitoring Permission Needed", "Autorisation de surveillance de l’entrée requise")
+        case .needsRestart: return tr(rawValue, "Authorized — Restart to Retry", "Autorisation accordée. Relancez KuroCat.")
+        }
     }
 }
 

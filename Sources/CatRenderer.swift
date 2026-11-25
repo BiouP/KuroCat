@@ -232,7 +232,7 @@ enum CatRenderer {
             }
             if hasCanvasTransform { ctx.restoreGState() }
             if showEdit {
-                drawEditOverlay(in: ctx, isEnglish: settings.isEnglish, scale: settings.scale, rotationDeg: rotationDeg, flipped: flipped)
+                drawEditOverlay(in: ctx, scale: settings.scale, rotationDeg: rotationDeg, flipped: flipped)
             }
             if showPermissionPill {
                 drawPermissionPill(in: ctx, text: permissionPillText)
@@ -263,7 +263,7 @@ enum CatRenderer {
             }
             if hasCanvasTransform { ctx.restoreGState() }
             if showEdit {
-                drawEditOverlay(in: ctx, isEnglish: settings.isEnglish, scale: settings.scale, rotationDeg: rotationDeg, flipped: flipped)
+                drawEditOverlay(in: ctx, scale: settings.scale, rotationDeg: rotationDeg, flipped: flipped)
             }
             if showPermissionPill {
                 drawPermissionPill(in: ctx, text: permissionPillText)
@@ -426,7 +426,7 @@ enum CatRenderer {
 
         // 10. Clean Transparent Resize & Rotation Edit Box (no blue tint, no flip/done buttons)
         if showEdit {
-            drawEditOverlay(in: ctx, isEnglish: settings.isEnglish, scale: settings.scale, rotationDeg: rotationDeg, flipped: flipped)
+            drawEditOverlay(in: ctx, scale: settings.scale, rotationDeg: rotationDeg, flipped: flipped)
         }
 
         // 11. Optional non-intrusive Permission Pill if global monitoring not yet granted
@@ -437,8 +437,7 @@ enum CatRenderer {
         ctx.restoreGState()
     }
 
-    private static func drawEditOverlay(in ctx: CGContext, isEnglish: Bool, scale: CGFloat, rotationDeg: CGFloat = 0, flipped: Bool = false) {
-        _ = isEnglish
+    private static func drawEditOverlay(in ctx: CGContext, scale: CGFloat, rotationDeg: CGFloat = 0, flipped: Bool = false) {
         ctx.saveGState()
         let boxRect = CGRect(x: 10, y: 26, width: 340, height: 284)
         let boxPath = CGPath(roundedRect: boxRect, cornerWidth: 12, cornerHeight: 12, transform: nil)

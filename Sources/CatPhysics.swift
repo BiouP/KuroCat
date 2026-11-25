@@ -4,10 +4,44 @@ import AppKit
 
 // MARK: - Themes & Settings
 
+enum UiLanguage: String, CaseIterable {
+    case chinese = "zh"
+    case english = "en"
+    case french = "fr"
+
+    var name: String {
+        switch self {
+        case .chinese: return "简体中文"
+        case .english: return "English"
+        case .french: return "Français"
+        }
+    }
+}
+
+func tr(_ chinese: String, _ english: String, _ french: String) -> String {
+    switch CatSettings.shared.language {
+    case .chinese: return chinese
+    case .english: return english
+    case .french: return french
+    }
+}
+
+func tr(_ original: String, french: String) -> String {
+    tr(original, original, french)
+}
+
 enum KeyboardTheme: String, CaseIterable {
     case classicMilk = "经典奶白暖黄 (原版)"
     case midnightHacker = "暗夜极客黑"
     case retroCream = "复古奶油灰"
+
+    var displayName: String {
+        switch self {
+        case .classicMilk: return tr(rawValue, "Classic Milk White", "Blanc crème classique")
+        case .midnightHacker: return tr(rawValue, "Midnight Hacker Black", "Noir minuit")
+        case .retroCream: return tr(rawValue, "Retro Cream Gray", "Gris crème rétro")
+        }
+    }
 }
 
 enum CatCoatTheme: String, CaseIterable {
@@ -15,6 +49,15 @@ enum CatCoatTheme: String, CaseIterable {
     case siamese = "挖煤暹罗猫"
     case shorthair = "美短（银虎斑加白）"
     case orangeWhite = "橘白猫"
+
+    var displayName: String {
+        switch self {
+        case .classicBlack: return tr(rawValue, "Classic Black Cat", "Chat noir classique")
+        case .siamese: return tr(rawValue, "Siamese Cat", "Chat siamois")
+        case .shorthair: return tr(rawValue, "Silver Tabby Shorthair", "Américain à poil court tigré argenté")
+        case .orangeWhite: return tr(rawValue, "Orange & White Cat", "Chat roux et blanc")
+        }
+    }
 }
 
 enum EyeColorTheme: String, CaseIterable {
@@ -24,6 +67,17 @@ enum EyeColorTheme: String, CaseIterable {
     case iceCyan = "冰晶浅蓝"
     case softAmber = "柔和琥珀"
     case referenceHazel = "淡金青绿"
+
+    var displayName: String {
+        switch self {
+        case .neonChartreuse: return tr(rawValue, "Neon Chartreuse", "Vert fluo")
+        case .siameseBlue: return tr(rawValue, "Siamese Ice Blue", "Bleu glacé du siamois")
+        case .warmAmber: return tr(rawValue, "Warm Amber", "Ambre chaud")
+        case .iceCyan: return tr(rawValue, "Ice Cyan", "Cyan glacé")
+        case .softAmber: return tr(rawValue, "Soft Amber", "Ambre doux")
+        case .referenceHazel: return tr(rawValue, "Golden Hazel", "Noisette doré")
+        }
+    }
 
     static func saved(_ raw: String) -> Self {
         raw == "淡金青绿（参考图）" ? .referenceHazel : (Self(rawValue: raw) ?? .neonChartreuse)
@@ -115,10 +169,9 @@ final class CatSettings {
         didSet { UserDefaults.standard.set(enableDragAnimation, forKey: "KuroCat.EnableDragAnimation") }
     }
     /// "zh" or "en"
-    var language: String {
-        didSet { UserDefaults.standard.set(language, forKey: "KuroCat.Language") }
+    var language: UiLanguage {
+        didSet { UserDefaults.standard.set(language.rawValue, forKey: "KuroCat.Language") }
     }
-    var isEnglish: Bool { language == "en" }
     /// Runtime-only interactive resize & flip bounding box (toggled via double-click or menu)
     var isEditMode: Bool = false
     var petInteraction: Bool {
@@ -182,7 +235,9 @@ final class CatSettings {
         whiteOutline = d.object(forKey: "KuroCat.WhiteOutline") as? Bool ?? true
         enableAnger = d.object(forKey: "KuroCat.EnableAnger") as? Bool ?? true
         enableDragAnimation = d.object(forKey: "KuroCat.EnableDragAnimation") as? Bool ?? true
-        language = d.string(forKey: "KuroCat.Language") ?? "zh"
+        let systemLanguage = Locale(identifier: Locale.preferredLanguages.first ?? "").languageCode
+        language = d.string(forKey: "KuroCat.Language").flatMap(UiLanguage.init(rawValue:))
+            ?? (systemLanguage == "fr" ? .french : .chinese)
         petInteraction = d.object(forKey: "KuroCat.PetInteraction") as? Bool ?? true
         fullClickThrough = d.object(forKey: "KuroCat.FullClickThrough") as? Bool ?? false
         fullScreenOverlay = d.object(forKey: "KuroCat.FullScreenOverlay") as? Bool ?? true
@@ -563,8 +618,8 @@ final class CatPhysics {
             pupilScale.target = 1.12
             earTwitch.velocity -= 2.2
             if CatSettings.shared.showMouseBadges {
-                let en = CatSettings.shared.isEnglish
-                let label = button == 0 ? (en ? "LMB" : "左键") : (button == 1 ? (en ? "RMB" : "右键") : (en ? "MMB" : "中键"))
+                let label = button == 0 ? tr("左键", "LMB", "Gauche")
+                    : button == 1 ? tr("右键", "RMB", "Droite") : tr("中键", "MMB", "Milieu")
                 let pt = CGPoint(
                     x: CatPhysics.mouseBaseCenter.x + mouseOffset.point.x,
                     y: CatPhysics.mouseBaseCenter.y + mouseOffset.point.y - 6

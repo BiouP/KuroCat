@@ -1760,10 +1760,12 @@ static void showSettingsWindow() {
                 g_app->settings.language = language;
                 g_app->settings.save();
                 if (g_app->drawArea) gtk_widget_queue_draw(g_app->drawArea);
-                if (g_app->dressingRoom) gtk_widget_destroy(g_app->dressingRoom);
-                GtkWidget* old = g_app->settingsWindow;
-                if (old) gtk_widget_destroy(old);
-                g_idle_add(+[](gpointer) -> gboolean { showSettingsWindow(); return G_SOURCE_REMOVE; }, nullptr);
+                g_idle_add(+[](gpointer) -> gboolean {
+                    if (g_app->dressingRoom) gtk_widget_destroy(g_app->dressingRoom);
+                    if (g_app->settingsWindow) gtk_widget_destroy(g_app->settingsWindow);
+                    showSettingsWindow();
+                    return G_SOURCE_REMOVE;
+                }, nullptr);
             }
         }), nullptr);
         gtk_grid_attach(GTK_GRID(g), app.setLangCombo, 1, r, 1, 1);

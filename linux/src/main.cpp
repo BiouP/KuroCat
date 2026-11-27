@@ -20,6 +20,7 @@
 #include "InputEngine.hpp"
 #include "CatPhysics.hpp"
 #include "CatRenderer.hpp"
+#include "CodexAnimation.hpp"
 #include "SkinLibrary.hpp"
 
 #include <sys/stat.h>
@@ -34,16 +35,18 @@
 #include <fcntl.h>
 #include <glib-unix.h>
 
-#define KUROCAT_VERSION_STR "1.4.6"
+#define KUROCAT_VERSION_STR "1.4.6-fr.1"
 static constexpr const char* APP_VERSION = KUROCAT_VERSION_STR;
 // Other KuroCat builds scan installed binaries for this marker (see readBinaryVersion) to find the
 // newest copy WITHOUT executing it. Always derived from KUROCAT_VERSION_STR.
 __attribute__((used)) static const char kVersionMarker[] = "KUROCAT_VERSION=" KUROCAT_VERSION_STR;
-static constexpr const char* UPDATE_PAGE_URL = "https://kurocat-download.app.workbuddy.host/?sharecode=JVAABIVZ7L";
+__attribute__((used)) static const char kReleaseChannelMarker[] = "KUROCAT_RELEASE_CHANNEL=BiouP/KuroCat";
+static constexpr const char* UPDATE_PAGE_URL = "https://github.com/BiouP/KuroCat/releases/latest";
+static constexpr const char* UPDATE_API_URL = "https://api.github.com/repos/BiouP/KuroCat/releases/latest";
 #if defined(__aarch64__) || defined(_M_ARM64)
-static constexpr const char* UPDATE_TAR_URL = "https://kurocat-download.app.workbuddy.host/downloads/KuroCat-Linux-arm64.tar.gz?sharecode=JVAABIVZ7L";
+static constexpr const char* UPDATE_TAR_URL = "https://github.com/BiouP/KuroCat/releases/latest/download/KuroCat-Linux-arm64.tar.gz";
 #else
-static constexpr const char* UPDATE_TAR_URL = "https://kurocat-download.app.workbuddy.host/downloads/KuroCat-Linux-x86_64.tar.gz?sharecode=JVAABIVZ7L";
+static constexpr const char* UPDATE_TAR_URL = "https://github.com/BiouP/KuroCat/releases/latest/download/KuroCat-Linux-x86_64.tar.gz";
 #endif
 
 struct LinuxApp {
@@ -56,6 +59,7 @@ struct LinuxApp {
     CatSettings settings;
     InputEngine input;
     CatPhysics physics;
+    CodexActivity codex;
     SkinLibrary skins;
     KeyboardSkinLibrary kbLibrary;
     GtkWidget* dressingRoom = nullptr;   // 「换装间」 import window (nullptr when closed)
@@ -76,6 +80,7 @@ struct LinuxApp {
     GtkWidget* setFlipChk = nullptr;
     GtkWidget* setOutlineChk = nullptr;
     GtkWidget* setDragAnimChk = nullptr;
+    GtkWidget* setCodexAnimChk = nullptr;
     GtkWidget* setAngerChk = nullptr;
     GtkWidget* setPetChk = nullptr;
     GtkWidget* setBadgesChk = nullptr;
@@ -144,47 +149,37 @@ static const char* tr(const char* chinese, const char* english, const char* fren
 
 static const char* trFrench(const char* original, const char* french) {
     return tr(original, original, french);
-}static int g_lockFd = -1;
+}
+
+static int g_lockFd = -1;
 static guint g_frameIntervalMs = 0;
 
 // MARK: - Versions of installed copies / single instance
 
-static int versionToNumber(const std::string& v) {
-    int parts[3] = { 0, 0, 0 };
-    int idx = 0;
-    for (char c : v) {
-        if (c >= '0' && c <= '9') parts[idx] = parts[idx] * 10 + (c - '0');
-        else if (c == '.') { if (++idx >= 3) break; }
-        else if (c != 'v' && c != 'V') break;
-    }
-    return parts[0] * 10000 + parts[1] * 100 + parts[2];
+static int versionToNumber(const std::string& version) {
+    int parts[3]{};
+    int revision = 0;
+    std::sscanf(version.c_str() + (!version.empty() && version.front() == 'v' ? 1 : 0), "%2d.%2d.%2d-fr.%2d",
+                &parts[0], &parts[1], &parts[2], &revision);
+    return parts[0] * 1000000 + parts[1] * 10000 + parts[2] * 100 + revision;
 }
 
-/// Reads the version baked into a kurocat binary without running it (0 = unknown / not kurocat).
-/// New builds carry "KUROCAT_VERSION=x.y.z"; builds up to 1.3.2 only contain "KuroCat/x.y.z"
-/// (their HTTP User-Agent).
+// Read the version from a fork binary without running it.
 static int readBinaryVersion(const std::string& path) {
     struct stat st{};
     if (stat(path.c_str(), &st) != 0 || !S_ISREG(st.st_mode) || st.st_size <= 0 || st.st_size > 64 * 1024 * 1024) return 0;
-    std::ifstream f(path, std::ios::binary);
-    if (!f) return 0;
-    std::string data((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
-    auto scan = [&](const std::string& needle) -> int {
-        size_t pos = 0;
-        while ((pos = data.find(needle, pos)) != std::string::npos) {
-            size_t p = pos + needle.size();
-            if (p < data.size() && std::isdigit((unsigned char)data[p])) {
-                size_t e = p;
-                while (e < data.size() && (std::isdigit((unsigned char)data[e]) || data[e] == '.')) e++;
-                return versionToNumber(data.substr(p, e - p));
-            }
-            pos = p;
+    std::ifstream file(path, std::ios::binary);
+    if (!file) return 0;
+    const std::string data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    if (data.find(kReleaseChannelMarker) == std::string::npos) return 0;
+    const std::string prefix = std::string("KUROCAT_") + "VERSION=";
+    for (auto marker = data.find(prefix); marker != std::string::npos; marker = data.find(prefix, marker + 1)) {
+        const auto start = marker + prefix.size();
+        if (start < data.size() && std::isdigit(static_cast<unsigned char>(data[start]))) {
+            return versionToNumber(data.substr(start, 20));
         }
-        return 0;
-    };
-    int v = scan(std::string("KUROCAT_") + "VERSION=");
-    if (v == 0) v = scan(std::string("KuroCat") + "/");
-    return v;
+    }
+    return 0;
 }
 
 static std::string homeDir() {
@@ -549,64 +544,6 @@ static std::string extractJsonField(const std::string& json, const char* fieldNa
     return json.substr(pos + 1, end - pos - 1);
 }
 
-static bool isSemVerNewer(const std::string& lhs, const std::string& rhs) {
-    auto parse = [](const std::string& v) {
-        std::vector<int> parts;
-        size_t i = 0;
-        while (i < v.size() && (v[i] == 'v' || v[i] == 'V' || v[i] == ' ')) i++;
-        int cur = 0; bool inNum = false;
-        for (; i < v.size(); ++i) {
-            if (v[i] >= '0' && v[i] <= '9') { cur = cur * 10 + (v[i] - '0'); inNum = true; }
-            else if (v[i] == '.') { parts.push_back(inNum ? cur : 0); cur = 0; inNum = false; }
-            else break;
-        }
-        if (inNum) parts.push_back(cur);
-        return parts;
-    };
-    auto a = parse(lhs), b = parse(rhs);
-    size_t n = std::max(a.size(), b.size());
-    for (size_t i = 0; i < n; ++i) {
-        int va = i < a.size() ? a[i] : 0;
-        int vb = i < b.size() ? b[i] : 0;
-        if (va != vb) return va > vb;
-    }
-    return false;
-}
-
-static std::string extractVersionFromHtml(const std::string& html) {
-    auto parseVerAt = [&](size_t pos) -> std::string {
-        if (pos >= html.size() || (html[pos] != 'v' && html[pos] != 'V')) return "";
-        size_t i = pos + 1;
-        int dots = 0;
-        std::string ver = "v";
-        while (i < html.size()) {
-            char c = html[i];
-            if (c >= '0' && c <= '9') { ver.push_back(c); }
-            else if (c == '.') { dots++; ver.push_back(c); }
-            else break;
-            i++;
-        }
-        return (dots >= 2 && ver.size() > 5) ? ver : "";
-    };
-
-    size_t mPos = html.find("已发布");
-    if (mPos != std::string::npos) {
-        size_t searchStart = (mPos > 32) ? (mPos - 32) : 0;
-        for (size_t i = mPos; i > searchStart; --i) {
-            if (html[i - 1] == 'v' || html[i - 1] == 'V') {
-                std::string v = parseVerAt(i - 1);
-                if (!v.empty()) return v;
-            }
-        }
-    }
-    size_t vPos = html.find("版本 ");
-    if (vPos != std::string::npos) {
-        std::string v = parseVerAt(vPos + 7);
-        if (!v.empty()) return v;
-    }
-    return "";
-}
-
 static std::string fetchUrlBody(const char* url) {
     std::string cmd = std::string("curl -fsSL --max-time 8 -A KuroCat/") + APP_VERSION + " '" + url +
         "' 2>/dev/null || wget -qO- --timeout=8 '" + url + "' 2>/dev/null";
@@ -627,20 +564,14 @@ static void startAsyncUpdateCheck(bool manual, int delayMs = 0) {
         auto* res = new LinuxUpdateResult();
         res->manual = manual;
 
-        std::string body = fetchUrlBody("https://kurocat-download.app.workbuddy.host/version.json?sharecode=JVAABIVZ7L");
-        std::string tag = extractJsonField(body, "tag_name");
-        std::string url = extractJsonField(body, "html_url");
-
-        if (tag.empty()) {
-            std::string html = fetchUrlBody(UPDATE_PAGE_URL);
-            tag = extractVersionFromHtml(html);
-        }
+        const std::string body = fetchUrlBody(UPDATE_API_URL);
+        const std::string tag = extractJsonField(body, "tag_name");
 
         if (!tag.empty()) {
             res->ok = true;
             res->latestTag = tag;
-            res->releaseUrl = url.empty() ? UPDATE_PAGE_URL : url;
-            res->hasUpdate = isSemVerNewer(tag, APP_VERSION);
+            res->releaseUrl = UPDATE_PAGE_URL;
+            res->hasUpdate = versionToNumber(tag) > versionToNumber(APP_VERSION);
         }
 
         g_idle_add(+[](gpointer data) -> gboolean {
@@ -1325,6 +1256,7 @@ static void refreshSettingsWindow(LinuxApp& app) {
     setChk(app.setFlipChk, app.settings.flipHorizontal);
     setChk(app.setOutlineChk, app.settings.whiteOutline);
     setChk(app.setDragAnimChk, app.settings.enableDragAnimation);
+    setChk(app.setCodexAnimChk, app.settings.codexAnimation);
     setChk(app.setAngerChk, app.settings.enableAnger);
     setChk(app.setPetChk, app.settings.petInteraction);
     setChk(app.setBadgesChk, app.settings.showKeyBadges);
@@ -1373,6 +1305,7 @@ static void showSettingsWindow() {
         g_app->setCoatCombo = g_app->setEyeCombo = g_app->setKbCombo = nullptr;
         g_app->setScaleSlider = g_app->setScaleLabel = g_app->setRotSlider = g_app->setRotLabel = nullptr;
         g_app->setFlipChk = g_app->setOutlineChk = g_app->setAngerChk = g_app->setPetChk = nullptr;
+        g_app->setDragAnimChk = g_app->setCodexAnimChk = nullptr;
         g_app->setBadgesChk = g_app->setMouseBadgesChk = g_app->setLegendsChk = g_app->setMarqueeChk = g_app->setLevelKeyboardChk = g_app->setTypingLimbCombo = nullptr;
         g_app->setTabletCombo = g_app->setTopmostChk = g_app->setAutohideChk = g_app->setClickThroughChk = nullptr;
         g_app->setAutostartChk = g_app->setHighFpsChk = g_app->setObsCombo = g_app->setObsHideChk = g_app->setLangCombo = nullptr;
@@ -1585,6 +1518,31 @@ static void showSettingsWindow() {
         }), nullptr);
         gtk_grid_attach(GTK_GRID(g), app.setDragAnimChk, 0, r, 1, 1);
         gtk_grid_attach(GTK_GRID(g), app.setAngerChk, 1, r++, 2, 1);
+
+        app.setCodexAnimChk = gtk_check_button_new_with_label(tr("Codex 工作动画", "Codex Animation", "Animation Codex"));
+        g_signal_connect(app.setCodexAnimChk, "toggled", G_CALLBACK(+[](GtkToggleButton* button, gpointer) {
+            LinuxApp& app = *g_app;
+            if (app.settingsUpdating) return;
+            const bool enable = gtk_toggle_button_get_active(button);
+            if (enable && !app.codex.listen()) {
+                app.settingsUpdating = true;
+                gtk_toggle_button_set_active(button, FALSE);
+                app.settingsUpdating = false;
+                GtkWidget* dialog = gtk_message_dialog_new(GTK_WINDOW(app.settingsWindow), GTK_DIALOG_MODAL,
+                    GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "%s",
+                    tr("无法启动 Codex 动画监听", "Could not listen for Codex activity", "Impossible de recevoir les signaux de Codex"));
+                gtk_dialog_run(GTK_DIALOG(dialog));
+                gtk_widget_destroy(dialog);
+                return;
+            }
+            if (!enable) app.codex.stop();
+            app.settings.codexAnimation = enable;
+            app.settings.save();
+        }), nullptr);
+        GtkWidget* preview = gtk_button_new_with_label(tr("预览", "Preview", "Aperçu"));
+        g_signal_connect(preview, "clicked", G_CALLBACK(+[](GtkButton*, gpointer) { g_app->codex.preview(); }), nullptr);
+        gtk_grid_attach(GTK_GRID(g), app.setCodexAnimChk, 0, r, 1, 1);
+        gtk_grid_attach(GTK_GRID(g), preview, 1, r++, 1, 1);
 
         app.setPetChk = gtk_check_button_new_with_label(tr("摸猫互动与咕噜特效", "Petting & Purr Sparkles", "Caresses et ronronnements"));
         g_signal_connect(app.setPetChk, "toggled", G_CALLBACK(+[](GtkToggleButton* b, gpointer) {
@@ -1951,7 +1909,21 @@ static gboolean onDraw(GtkWidget* widget, cairo_t* cr, gpointer) {
 
     cairo_save(cr);
     cairo_scale(cr, (double)w / CatPhysics::CanvasWidth, (double)h / CatPhysics::CanvasHeight);
-    CatRenderer::draw(cr, g_app->physics, g_app->settings, activeSkin(*g_app), activeKeyboardSkin(*g_app));
+    LinuxApp& app = *g_app;
+    const SkinSpec& skin = activeSkin(app);
+    const KeyboardSkinSpec& keyboard = activeKeyboardSkin(app);
+    const CodexFrame codex = app.codex.frame();
+    const bool showCodex = codex.phase != CodexPhase::Idle && !app.settings.isEditMode;
+    const bool interacting = app.isDragging || !app.input.activeKeys.empty() || app.input.leftMouseDown
+        || app.input.rightMouseDown || app.physics.petHeadIntensity > 0.15f || app.physics.petBodyIntensity > 0.15f;
+    if (showCodex && !interacting) {
+        CatPhysics pose = app.physics;
+        CodexAnimation::applyPose(pose, codex, skin);
+        CatRenderer::draw(cr, pose, app.settings, skin, keyboard);
+    } else {
+        CatRenderer::draw(cr, app.physics, app.settings, skin, keyboard);
+    }
+    if (showCodex) CodexAnimation::drawStatus(cr, codex, app.settings, skin);
     cairo_restore(cr);
     return FALSE;
 }
@@ -2147,11 +2119,12 @@ static void refreshWindowGeometry(LinuxApp& app) {
 /// software-composited desktops (统信 UOS / 麒麟 on weak or 国产 GPUs, VMs) so slow that only
 /// typing still worked. Now: 30fps while the user is typing/moving/petting, 20fps when idle,
 /// 10fps when the cat is asleep, 4fps when hidden. "高帧率 60fps" in the menu restores 60fps.
-static guint desiredFrameIntervalMs(const LinuxApp& app) {
+static guint desiredFrameIntervalMs(LinuxApp& app) {
     if (!app.isVisible || app.hiddenByFullscreen) return 250;
     if (app.settings.highFrameRate) return 16;
     double now = nowSeconds();
     bool busy = app.isDragging || app.demoActive || !app.input.activeKeys.empty()
+        || (!app.settings.isEditMode && app.codex.frame().phase != CodexPhase::Idle)
         || app.input.leftMouseDown || app.input.rightMouseDown
         || (now - app.input.lastAnyInputTime()) < 2.5
         || !app.physics.floatingKeycaps.empty() || !app.physics.tabletTrail.empty()
@@ -2385,6 +2358,10 @@ int main(int argc, char** argv) {
         app.settings.language = UiLanguage::French;
     }
     app.settings.load();
+    if (app.settings.codexAnimation && !app.codex.listen()) {
+        g_warning("Could not listen for Codex activity");
+        app.settings.codexAnimation = false;
+    }
     KeyboardLayout::levelKeyboard() = app.settings.levelKeyboard;
     CatSettings::loadStats(app.statsDay, app.input.totalKeystrokesToday, app.physics.totalPetSessions);
     app.lastSavedPetSessions = app.physics.totalPetSessions;
@@ -2491,6 +2468,7 @@ int main(int argc, char** argv) {
     startAsyncUpdateCheck(false, 2500);
 
     gtk_main();
+    app.codex.stop();
     CatSettings::saveStats(app.statsDay, app.input.totalKeystrokesToday, app.physics.totalPetSessions);
     app.input.stop();
     releaseSingleInstance();

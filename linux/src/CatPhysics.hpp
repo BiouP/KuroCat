@@ -54,6 +54,7 @@ struct CatSettings {
     bool whiteOutline = true;
     bool enableAnger = true;
     bool enableDragAnimation = true;
+    bool codexAnimation = false;
     UiLanguage language = UiLanguage::Chinese;
     bool isEditMode = false; // runtime-only interactive resize & rotate box
     bool petInteraction = true;
@@ -110,6 +111,7 @@ struct CatSettings {
                 else if (k == "whiteOutline") whiteOutline = (std::stoi(v) != 0);
                 else if (k == "enableAnger") enableAnger = (std::stoi(v) != 0);
                 else if (k == "enableDragAnimation") enableDragAnimation = (std::stoi(v) != 0);
+                else if (k == "codexAnimation") codexAnimation = (std::stoi(v) != 0);
                 else if (k == "language") {
                     if (v == "zh") language = UiLanguage::Chinese;
                     else if (v == "en") language = UiLanguage::English;
@@ -156,6 +158,7 @@ struct CatSettings {
           << "whiteOutline=" << (whiteOutline ? 1 : 0) << "\n"
           << "enableAnger=" << (enableAnger ? 1 : 0) << "\n"
           << "enableDragAnimation=" << (enableDragAnimation ? 1 : 0) << "\n"
+          << "codexAnimation=" << (codexAnimation ? 1 : 0) << "\n"
           << "language=" << localized(language, "zh", "en", "fr") << "\n"
           << "petInteraction=" << (petInteraction ? 1 : 0) << "\n"
           << "fullClickThrough=" << (fullClickThrough ? 1 : 0) << "\n"

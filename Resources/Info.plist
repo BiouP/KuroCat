@@ -21,7 +21,9 @@
     <key>CFBundleShortVersionString</key>
     <string>1.4.6</string>
     <key>CFBundleVersion</key>
-    <string>146</string>
+    <string>146.1</string>
+    <key>KuroCatReleaseVersion</key>
+    <string>1.4.6-fr.1</string>
     <key>LSMinimumSystemVersion</key>
     <string>11.0</string>
     <key>LSUIElement</key>

@@ -5,7 +5,7 @@
 **Un chat de bureau léger et libre qui réagit au clavier et à la souris · macOS, Windows, Linux et UOS**
 
 <p>
-  <a href="https://github.com/chanke17/KuroCat/releases/latest"><img src="https://img.shields.io/github/v/release/chanke17/KuroCat?style=flat-square&amp;color=1f6feb&amp;label=Version%20d%27origine" alt="Dernière version du projet d’origine"/></a>
+  <a href="https://github.com/BiouP/KuroCat/releases"><img src="https://img.shields.io/github/v/release/BiouP/KuroCat?style=flat-square&amp;color=1f6feb&amp;label=Version%20fran%C3%A7aise" alt="Dernière version du fork"/></a>
   <a href="https://github.com/chanke17/KuroCat/releases"><img src="https://img.shields.io/github/downloads/chanke17/KuroCat/total?style=flat-square&amp;color=2ea44f&amp;label=T%C3%A9l%C3%A9chargements" alt="Téléchargements du projet d’origine"/></a>
   <a href="https://github.com/chanke17/KuroCat/stargazers"><img src="https://img.shields.io/github/stars/chanke17/KuroCat?style=flat-square&amp;color=e3b341&amp;label=%C3%89toiles" alt="Étoiles du projet d’origine sur GitHub"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/chanke17/KuroCat?style=flat-square&amp;color=8957e5&amp;label=Licence" alt="Licence MIT"/></a>
@@ -19,7 +19,7 @@
   <a href="https://kurocat.cc/en/">🌐 Site officiel et démo</a> ·
   <a href="https://workshop.kurocat.cc/">🎨 Atelier de pelages</a> ·
   <a href="https://kurocat.cc/obs-guide/">🎥 Guide OBS</a> ·
-  <a href="https://github.com/chanke17/KuroCat/releases/latest">⬇️ Versions du projet d’origine</a>
+  <a href="https://github.com/BiouP/KuroCat/releases">⬇️ Télécharger KuroCat en français</a>
 </p>
 
 <p>
@@ -42,7 +42,7 @@ KuroCat tape par petites rafales, lève les yeux pendant une pause de réflexion
   <img src="assets/demo_codex.gif" width="480" alt="KuroCat tape au clavier, réfléchit, puis s’étire quand une coche verte apparaît"/>
 </p>
 
-Cette séquence simule une tâche Codex pour présenter l’intégration Linux en cours de développement.
+Cette séquence simule une tâche Codex. L’animation est disponible sous Linux, avec un bouton d’aperçu et des hooks pour suivre les sessions en direct.
 
 ## Ce que fait KuroCat
 
@@ -89,11 +89,11 @@ Depuis l’interface anglaise, cherchez **Settings → Language**. Depuis l’in
 
 ## Installer ou compiler
 
-Les exécutables du projet d’origine sont disponibles sur [GitHub Releases](https://github.com/chanke17/KuroCat/releases/latest). Pour utiliser l’interface française de ce fork, compilez les sources de ce dépôt avec les commandes ci-dessous.
+Les exécutables de ce fork sont disponibles dans [GitHub Releases](https://github.com/BiouP/KuroCat/releases). Vous pouvez aussi compiler l’application avec les commandes ci-dessous.
 
 ### 🍎 macOS 11 ou ultérieur · Apple Silicon et Intel
 
-Pour installer la version d’origine, décompressez `KuroCat-macOS-universal.zip`, puis glissez `KuroCat.app` dans **Applications**. L’icône KuroCat apparaît dans la barre des menus.
+Décompressez `KuroCat-macOS-universal.zip`, puis glissez `KuroCat.app` dans **Applications**. L’icône KuroCat apparaît dans la barre des menus.
 
 Au premier lancement, autorisez KuroCat dans **Réglages Système → Confidentialité et sécurité → Surveillance de l’entrée**, puis relancez l’application depuis son menu. Lorsque le passage des clics est activé, maintenez **⌥ Option** pour déplacer le chat ou ouvrir son menu contextuel.
 
@@ -112,7 +112,7 @@ Le script produit une application universelle pour Apple Silicon et Intel.
 
 ### 🪟 Windows x64 · 7 SP1, 8, 10 et 11
 
-La version d’origine se lance en ouvrant `KuroCat-Windows-x64.exe`. Vous pouvez accéder au menu depuis l’icône de notification.
+Ouvrez `KuroCat-Windows-x64.exe`, puis accédez au menu depuis l’icône de notification.
 
 Lorsque le passage des clics est activé, utilisez **Ctrl + Alt + Maj + P** pour le désactiver, ou maintenez **Alt** pour déplacer le chat ou faire un clic droit. Vous pouvez aussi rouvrir l’exécutable pour retrouver le menu.
 
@@ -162,6 +162,23 @@ chmod +x build.sh build_deb.sh
 Pour créer un paquet Debian après la compilation, exécutez `./build_deb.sh`. Sur les machines modestes, la fréquence d’image adaptative réduit la charge en évitant de forcer le mode 60 i/s.
 
 </details>
+
+### Animation Codex sous Linux
+
+Dans **Réglages → Interactions et effets**, cochez **Animation Codex**. Le bouton **Aperçu** joue la séquence de frappe, la pause de réflexion et l’étirement final.
+
+Pour suivre l’activité de Codex sur la même machine, générez sa configuration de hooks avec la commande qui correspond à votre installation.
+
+```bash
+# Sources, à la racine du dépôt
+python3 linux/codex-hook.py --config
+# Paquet .deb
+python3 /usr/share/kurocat/codex-hook.py --config
+# Archive Linux installée avec install.sh
+python3 "${XDG_DATA_HOME:-$HOME/.local/share}/kurocat/codex-hook.py" --config
+```
+
+Ajoutez les entrées affichées à votre fichier `~/.codex/hooks.json`, ou au fichier `hooks.json` dans `CODEX_HOME` si cette variable est définie. Si le fichier contient déjà des hooks, fusionnez les entrées sous `hooks`. Validez-les ensuite dans **Réglages → Hooks** côté Codex. Le script transmet à KuroCat les événements de début, de fin et d’interruption via un socket local, avec les identifiants de session et de tâche.
 
 ---
 

@@ -34,6 +34,9 @@ pkill -x kurocat >/dev/null 2>&1 || true
 
 install -m 755 "$HERE/kurocat" "$BIN_DIR/kurocat.new"
 mv -f "$BIN_DIR/kurocat.new" "$BIN_DIR/kurocat"
+if [ -f "$HERE/codex-hook.py" ]; then
+    install -D -m 644 "$HERE/codex-hook.py" "$DATA_HOME/kurocat/codex-hook.py"
+fi
 [ -f "$HERE/kurocat.svg" ] && install -m 644 "$HERE/kurocat.svg" "$ICON_DIR/kurocat.svg"
 
 # 写入「开始菜单 / 启动器」图标（同名文件会覆盖系统里旧的 .deb 版本入口）

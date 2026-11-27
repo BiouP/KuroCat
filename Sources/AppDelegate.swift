@@ -25,7 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var lastAnnouncedHour: Int = -1
 
     private var currentAppVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.4.6"
+        Bundle.main.infoDictionary?["KuroCatReleaseVersion"] as? String ?? "1.4.6-fr.1"
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -99,12 +99,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let myPID = ProcessInfo.processInfo.processIdentifier
         let myURL = Bundle.main.bundleURL.standardizedFileURL
         let others = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
-            .filter { $0.processIdentifier != myPID }
+            .filter { app in
+                guard app.processIdentifier != myPID, let url = app.bundleURL else { return false }
+                return Self.forkVersion(ofAppAt: url) != nil
+            }
         if others.isEmpty { return false }
 
         for other in others {
             guard let otherURL = other.bundleURL?.standardizedFileURL, otherURL != myURL,
-                  let otherVersion = Self.shortVersion(ofAppAt: otherURL) else { continue }
+                  let otherVersion = Self.forkVersion(ofAppAt: otherURL) else { continue }
             if isVersion(otherVersion, newerThan: currentAppVersion) {
                 isHandingOverToNewerCopy = true
                 _ = other.activate(options: [])
@@ -122,11 +125,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return false
     }
 
-    /// Reads CFBundleShortVersionString straight from disk (Bundle(url:) may return cached info).
-    private static func shortVersion(ofAppAt url: URL) -> String? {
+    /// Reads the fork version from disk, so copies of the upstream application are ignored.
+    private static func forkVersion(ofAppAt url: URL) -> String? {
         let plistURL = url.appendingPathComponent("Contents/Info.plist")
         guard let dict = NSDictionary(contentsOf: plistURL) as? [String: Any] else { return nil }
-        return dict["CFBundleShortVersionString"] as? String
+        return dict["KuroCatReleaseVersion"] as? String
     }
 
     /// A newer KuroCat.app that is already on disk (e.g. downloaded to ~/Downloads but never
@@ -144,7 +147,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         for url in appURLs {
             let std = url.standardizedFileURL
             guard std != myURL, !std.path.contains("/.Trash/"),
-                  let v = Self.shortVersion(ofAppAt: std),
+                  let v = Self.forkVersion(ofAppAt: std),
                   isVersion(v, newerThan: best?.version ?? currentAppVersion) else { continue }
             best = (std, v)
         }
@@ -989,9 +992,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: - Auto Update Checker & In-App Self-Updater
 
-    private static let updatePageURLString = "https://kurocat-download.app.workbuddy.host/?sharecode=JVAABIVZ7L"
-    private static let updateVersionJSONURLString = "https://kurocat-download.app.workbuddy.host/version.json?sharecode=JVAABIVZ7L"
-    private static let defaultMacAssetURLString = "https://kurocat-download.app.workbuddy.host/downloads/KuroCat-macOS-universal.zip?sharecode=JVAABIVZ7L"
+    private static let updatePageURLString = "https://github.com/BiouP/KuroCat/releases/latest"
+    private static let updateVersionJSONURLString = "https://api.github.com/repos/BiouP/KuroCat/releases/latest"
+    private static let defaultMacAssetURLString = "https://github.com/BiouP/KuroCat/releases/latest/download/KuroCat-macOS-universal.zip"
 
     @objc private func manualCheckForUpdates() {
         checkForUpdates(manual: true)
@@ -1002,27 +1005,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func parseUpdateInfo(from data: Data) -> (tag: String, pageURL: URL?, assetURL: URL?)? {
-        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let tagName = json["tag_name"] as? String, !tagName.isEmpty {
-            let pageStr = (json["html_url"] as? String) ?? Self.updatePageURLString
-            let assets = json["assets"] as? [String: Any]
-            let macStr = (assets?["macos"] as? String) ?? Self.defaultMacAssetURLString
-            return (tagName, URL(string: pageStr), URL(string: macStr))
-        }
-        if let html = String(data: data, encoding: .utf8) {
-            let patterns = [
-                #"v(\d+\.\d+\.\d+)\s*已发布"#,
-                #"版本\s*v(\d+\.\d+\.\d+)"#
-            ]
-            for pattern in patterns {
-                if let regex = try? NSRegularExpression(pattern: pattern),
-                   let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
-                   let r = Range(match.range(at: 1), in: html) {
-                    return ("v" + String(html[r]), URL(string: Self.updatePageURLString), URL(string: Self.defaultMacAssetURLString))
-                }
-            }
-        }
-        return nil
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let tagName = json["tag_name"] as? String, !tagName.isEmpty else { return nil }
+        return (tagName, URL(string: Self.updatePageURLString), URL(string: Self.defaultMacAssetURLString))
     }
 
     private func fetchUpdateEndpoint(_ urlString: String, completion: @escaping ((tag: String, pageURL: URL?, assetURL: URL?)?) -> Void) {
@@ -1044,20 +1029,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func checkForUpdates(manual: Bool) {
-        fetchUpdateEndpoint(Self.updateVersionJSONURLString) { [weak self] primary in
+        fetchUpdateEndpoint(Self.updateVersionJSONURLString) { [weak self] info in
             guard let self else { return }
-            if let info = primary {
-                DispatchQueue.main.async { self.handleUpdateResult(info, manual: manual) }
-                return
-            }
-            self.fetchUpdateEndpoint(Self.updatePageURLString) { [weak self] fallback in
-                guard let self else { return }
-                DispatchQueue.main.async {
-                    if let info = fallback {
-                        self.handleUpdateResult(info, manual: manual)
-                    } else if manual {
-                        self.showInfoAlert(title: tr("检查更新失败", french: "Échec de la recherche de mises à jour"), message: tr("无法连接到更新服务器，请稍后重试或检查网络连接。", french: "Impossible de joindre le serveur de mises à jour. Vérifiez votre connexion ou réessayez plus tard."))
-                    }
+            DispatchQueue.main.async {
+                if let info {
+                    self.handleUpdateResult(info, manual: manual)
+                } else if manual {
+                    self.showInfoAlert(title: tr("检查更新失败", french: "Échec de la recherche de mises à jour"), message: tr("无法连接到更新服务器，请稍后重试或检查网络连接。", french: "Impossible de joindre le serveur de mises à jour. Vérifiez votre connexion ou réessayez plus tard."))
                 }
             }
         }

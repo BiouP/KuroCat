@@ -8,6 +8,7 @@ CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 
 pkill -x kurocat >/dev/null 2>&1 || true
 rm -f "$HOME/.local/bin/kurocat" \
+      "$DATA_HOME/kurocat/codex-hook.py" \
       "$DATA_HOME/applications/kurocat.desktop" \
       "$DATA_HOME/icons/hicolor/scalable/apps/kurocat.svg" \
       "$CONFIG_HOME/autostart/kurocat.desktop"

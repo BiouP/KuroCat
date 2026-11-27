@@ -14,11 +14,13 @@ fi
 mkdir -p \
     "$PKG_DIR/DEBIAN" \
     "$PKG_DIR/usr/bin" \
+    "$PKG_DIR/usr/share/kurocat" \
     "$PKG_DIR/usr/share/applications" \
     "$PKG_DIR/usr/share/icons/hicolor/scalable/apps"
 
 cp "$ROOT/kurocat" "$PKG_DIR/usr/bin/kurocat"
 chmod 755 "$PKG_DIR/usr/bin/kurocat"
+install -m 644 "$ROOT/codex-hook.py" "$PKG_DIR/usr/share/kurocat/codex-hook.py"
 cp "$ROOT/kurocat.desktop" "$PKG_DIR/usr/share/applications/kurocat.desktop"
 cp "$ROOT/kurocat.svg" "$PKG_DIR/usr/share/icons/hicolor/scalable/apps/kurocat.svg"
 
@@ -35,8 +37,8 @@ Priority: optional
 Architecture: ${ARCH}
 Installed-Size: ${INSTALLED_KB}
 Depends: libc6 (>= 2.28), libgtk-3-0 (>= 3.22) | libgtk-3-0t64, libcairo2, libx11-6, libxi6
-Maintainer: chanke17 <chanke17@users.noreply.github.com>
-Homepage: https://github.com/chanke17/KuroCat
+Maintainer: BiouP <55983337+BiouP@users.noreply.github.com>
+Homepage: https://github.com/BiouP/KuroCat
 Description: KuroCat native desktop keyboard & mouse cat pet
  Lightweight 60fps transparent desktop pet supporting full-state keyboard and
  mouse capture for typing and gaming (XInput2 + evdev), 2.5D head tracking,
